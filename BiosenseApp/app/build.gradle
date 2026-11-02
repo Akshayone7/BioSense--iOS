@@ -1,0 +1,86 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.biosense'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.biosense"
+        // Health Connect client SDK requires API 26+. That covers ~99% of
+        // Android devices in 2026 and unlocks vitals sync to Google/Samsung/Fitbit.
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "2.0.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+
+    buildFeatures {
+        compose true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.5.10'
+    }
+    packaging {
+        resources.excludes += ['/META-INF/{AL2.0,LGPL2.1}']
+    }
+}
+
+dependencies {
+    def composeBom = platform('androidx.compose:compose-bom:2024.02.02')
+    implementation composeBom
+    androidTestImplementation composeBom
+
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.activity:activity-compose:1.8.2'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.7.0'
+
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-graphics'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.material:material-icons-extended'
+    implementation 'androidx.navigation:navigation-compose:2.7.7'
+
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+
+    // Health Connect: write vitals so Google Fit / Samsung Health / Fitbit etc.
+    // can consume them. alpha07's permission contract fires
+    // ACTION_REQUEST_PERMISSIONS at the *system* permissioncontroller, but on
+    // Android 14 the health.* perms are still owned by the HC provider app —
+    // the sheet self-dismisses. rc03+ fixes that but wants compileSdk 35 /
+    // AGP 8.9+. Workaround: route the toggle through HC's own settings
+    // activity and detect the grant on resume.
+    implementation 'androidx.health.connect:connect-client:1.1.0-alpha07'
+
+    // Nordic DFU: over-the-air firmware update for the XIAO nRF52840 wearable.
+    // Reads a .zip DFU package (produced by the Nordic nrfutil/adafruit-nrfutil
+    // toolchain) and pushes it to the connected device over the Secure DFU
+    // service. We keep the "-no-operator" variant so we don't drag in a
+    // Bluetooth-LE-scanner transitive we already have.
+    implementation('no.nordicsemi.android:dfu:2.4.2') {
+        // Gson 2.10.1 (transitive) uses Java 9 module-info that trips the D8
+        // dex merger. 2.9.0 is Java 8 and works cleanly.
+        exclude group: 'com.google.code.gson'
+    }
+    implementation 'com.google.code.gson:gson:2.9.0'
+
+    debugImplementation 'androidx.compose.ui:ui-tooling'
+}
